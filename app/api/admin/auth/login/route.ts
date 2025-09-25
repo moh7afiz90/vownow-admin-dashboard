@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('role, status')
       .eq('id', data.user.id)
-      .single();
+      .single() as { data: { role: string; status: string } | null };
 
     if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
       await supabase.auth.signOut();

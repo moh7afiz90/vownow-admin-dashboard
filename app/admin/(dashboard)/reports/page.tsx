@@ -159,7 +159,12 @@ export default function ReportsPage() {
 }
 
 function generateMockData(reportType: string) {
-  const data = []
+  const data: Array<{
+    date: string
+    metric: string
+    value: number
+    change: string
+  }> = []
   const metrics = {
     'user-activity': ['New Users', 'Active Users', 'Session Duration'],
     'revenue': ['Total Revenue', 'Transactions', 'Average Order Value'],

@@ -48,7 +48,7 @@ export class ServerSessionManager {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .single() as { data: any | null; error: any };
 
       if (profileError || !profile) {
         return {
@@ -58,7 +58,7 @@ export class ServerSessionManager {
       }
 
       // Check if user has admin role
-      if (!['admin', 'super_admin'].includes(profile.role)) {
+      if (!['admin', 'super_admin'].includes(profile.role as string)) {
         return {
           success: false,
           error: { error: 'User is not an admin', code: 'NOT_ADMIN' },
@@ -68,11 +68,17 @@ export class ServerSessionManager {
       // Map profile to AdminUser type
       const typedAdminUser: AdminUser = {
         id: profile.id,
+        user_id: profile.id,
         email: profile.email || user.email || '',
+        full_name: profile.full_name || null,
         role: profile.role,
+        permissions: profile.permissions || {},
         is_active: profile.status === 'active',
         two_factor_enabled: false,
-        two_factor_secret: null,
+        two_factor_secret: undefined,
+        last_login_at: profile.last_login_at || null,
+        created_by: profile.created_by || null,
+        updated_by: profile.updated_by || null,
         created_at: profile.created_at,
         updated_at: profile.updated_at
       };

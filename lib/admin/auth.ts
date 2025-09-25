@@ -85,7 +85,7 @@ export async function signInAdmin(email: string, password: string) {
       .from('profiles')
       .select('id, email, role, status')
       .eq('id', data.user.id)
-      .single();
+      .single() as { data: { id: string; email: string | null; role: string; status: string } | null; error: any };
 
     // Map profile data to AdminUser structure
     const adminUser = profile ? {
@@ -94,7 +94,7 @@ export async function signInAdmin(email: string, password: string) {
       role: profile.role,
       is_active: profile.status === 'active',
       two_factor_enabled: false,
-      two_factor_secret: null
+      two_factor_secret: undefined
     } : null;
 
     const adminUserError = profileError;
