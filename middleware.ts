@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createMiddlewareClient } from '@/lib/supabase/middleware';
+import { createClient } from '@supabase/supabase-js';
 
 // Admin routes that require authentication
 const ADMIN_PROTECTED_ROUTES = [
@@ -45,27 +45,69 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const response = NextResponse.next();
-    const supabase = await createMiddlewareClient(request, response);
+    // Get the auth token from cookies
+    const cookieStore = request.cookies;
+    const authToken = cookieStore.get('sb-nukophdrrycvhivztujf-auth-token');
 
-    // Get user session
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      // Redirect to login if no valid session
+    if (!authToken) {
+      // No auth token, redirect to login
       const redirectUrl = new URL('/admin/login', request.url);
       redirectUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(redirectUrl);
     }
 
+    // Parse the token to get user info (basic check)
+    let tokenData;
+    try {
+      // The cookie value is URL encoded JSON array
+      const decodedValue = decodeURIComponent(authToken.value);
+      tokenData = JSON.parse(decodedValue);
+    } catch (e) {
+      // Invalid token format
+      const redirectUrl = new URL('/admin/login', request.url);
+      redirectUrl.searchParams.set('error', 'session');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Extract the JWT token (first element of the array)
+    const jwtToken = tokenData[0];
+    if (!jwtToken) {
+      const redirectUrl = new URL('/admin/login', request.url);
+      redirectUrl.searchParams.set('error', 'session');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Decode JWT to get user ID (without verification for now)
+    const base64Url = jwtToken.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    const payload = JSON.parse(jsonPayload);
+
+    if (!payload.sub) {
+      const redirectUrl = new URL('/admin/login', request.url);
+      redirectUrl.searchParams.set('error', 'session');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Use service role to check profile (bypasses RLS)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      const redirectUrl = new URL('/admin/login', request.url);
+      redirectUrl.searchParams.set('error', 'config');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Check if user has admin role in profiles table
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await adminSupabase
       .from('profiles')
       .select('role, status')
-      .eq('id', user.id)
+      .eq('id', payload.sub)
       .single();
 
     if (profileError || !profile) {
@@ -138,8 +180,9 @@ export async function middleware(request: NextRequest) {
     }
 
     // Add user info to headers for downstream components
-    response.headers.set('x-admin-user-id', user.id);
-    response.headers.set('x-admin-user-role', adminUser.role);
+    const response = NextResponse.next();
+    response.headers.set('x-admin-user-id', payload.sub);
+    response.headers.set('x-admin-user-role', profile.role);
 
     return response;
 

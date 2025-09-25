@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { signInAdmin } from '@/lib/admin/auth';
+import { createApiClient } from '@/lib/supabase/api';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,23 +13,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await signInAdmin(email, password);
+    // Use route handler client to ensure cookies are properly set
+    const supabase = await createApiClient();
 
-    if (result.error) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
       return NextResponse.json(
-        { error: result.error },
+        { error: error.message },
         { status: 401 }
       );
     }
 
-    // Create response with proper headers
+    if (!data.user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 401 }
+      );
+    }
+
+    // Use service role client to check admin role (bypasses RLS)
+    const adminSupabase = createServiceRoleClient();
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('role, status')
+      .eq('id', data.user.id)
+      .single();
+
+    if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access only' },
+        { status: 401 }
+      );
+    }
+
+    if (profile.status !== 'active') {
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        { error: 'Account deactivated' },
+        { status: 401 }
+      );
+    }
+
+    // Create response - cookies are handled by Supabase auth helpers
     const response = NextResponse.json(
-      { success: true, user: result.user },
+      {
+        success: true,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          role: profile.role
+        }
+      },
       { status: 200 }
     );
 
-    // The cookies are already set by signInAdmin through Supabase auth,
-    // but we need to ensure the response includes them
     return response;
   } catch (error) {
     console.error('Login error:', error);

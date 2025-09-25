@@ -32,8 +32,11 @@ export default function AdminLoginPage() {
       }
 
       // Success - redirect to admin dashboard
-      router.push('/admin');
-      router.refresh();
+      // Add a small delay to ensure cookies are set
+      setTimeout(() => {
+        router.push('/admin/dashboard');
+        router.refresh();
+      }, 100);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
