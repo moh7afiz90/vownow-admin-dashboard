@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabase } from './supabase/client';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -29,23 +29,23 @@ export interface ActivityData {
 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   try {
-    const { count: totalUsers } = await supabase
+    const { count: totalUsers } = await getSupabase()
       .from('users')
       .select('*', { count: 'exact', head: true });
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { count: activeUsers } = await supabase
+    const { count: activeUsers } = await getSupabase()
       .from('users')
       .select('*', { count: 'exact', head: true })
       .gte('last_seen_at', thirtyDaysAgo.toISOString());
 
-    const { count: emailsCollected } = await supabase
+    const { count: emailsCollected } = await getSupabase()
       .from('waitlist')
       .select('*', { count: 'exact', head: true });
 
-    const { count: questionnairesCompleted } = await supabase
+    const { count: questionnairesCompleted } = await getSupabase()
       .from('questionnaire_responses')
       .select('*', { count: 'exact', head: true })
       .eq('completed', true);
@@ -58,13 +58,13 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     currentMonth.setDate(1);
     currentMonth.setHours(0, 0, 0, 0);
 
-    const { data: revenueData } = await supabase
+    const { data: revenueData } = await getSupabase()
       .from('transactions')
       .select('amount')
       .gte('created_at', currentMonth.toISOString())
       .eq('status', 'completed');
 
-    const monthlyRevenue = revenueData?.reduce((sum, tx) => sum + tx.amount, 0) || 0;
+    const monthlyRevenue = revenueData?.reduce((sum, tx: any) => sum + tx.amount, 0) || 0;
 
     return {
       totalUsers: totalUsers || 0,
@@ -92,7 +92,7 @@ export async function fetchUserGrowthData(): Promise<UserGrowthData[]> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('users')
       .select('created_at')
       .gte('created_at', thirtyDaysAgo.toISOString())
@@ -100,7 +100,7 @@ export async function fetchUserGrowthData(): Promise<UserGrowthData[]> {
 
     if (!data) return [];
 
-    const growthByDate = data.reduce((acc: Record<string, number>, user) => {
+    const growthByDate = data.reduce((acc: Record<string, number>, user: any) => {
       const date = new Date(user.created_at).toLocaleDateString();
       acc[date] = (acc[date] || 0) + 1;
       return acc;
@@ -133,7 +133,7 @@ export async function fetchRevenueData(): Promise<RevenueData[]> {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('transactions')
       .select('amount, created_at')
       .gte('created_at', sixMonthsAgo.toISOString())
@@ -142,7 +142,7 @@ export async function fetchRevenueData(): Promise<RevenueData[]> {
 
     if (!data) return [];
 
-    const revenueByMonth = data.reduce((acc: Record<string, number>, tx) => {
+    const revenueByMonth = data.reduce((acc: Record<string, number>, tx: any) => {
       const month = new Date(tx.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short'
@@ -163,7 +163,7 @@ export async function fetchRevenueData(): Promise<RevenueData[]> {
 
 export async function fetchRecentActivity(limit = 10): Promise<ActivityData[]> {
   try {
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('activity_logs')
       .select(`
         id,
@@ -290,30 +290,30 @@ export async function fetchUsersAnalytics(filters: AnalyticsFilters = {}): Promi
     const endDate = filters.endDate ? new Date(filters.endDate) : now;
 
     // Total Users
-    const { count: totalUsers } = await supabase
+    const { count: totalUsers } = await getSupabase()
       .from('profiles')
       .select('*', { count: 'exact', head: true });
 
     // New Users in period
-    const { count: newUsers } = await supabase
+    const { count: newUsers } = await getSupabase()
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
     // Active Users (last 30 days)
-    const { count: activeUsers } = await supabase
+    const { count: activeUsers } = await getSupabase()
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .gte('last_seen_at', thirtyDaysAgo.toISOString());
 
     // Users by plan
-    const { data: planData } = await supabase
+    const { data: planData } = await getSupabase()
       .from('subscriptions')
       .select('plan_type')
       .eq('status', 'active');
 
-    const usersByPlan = planData?.reduce((acc: any, sub) => {
+    const usersByPlan = planData?.reduce((acc: any, sub: any) => {
       acc[sub.plan_type] = (acc[sub.plan_type] || 0) + 1;
       return acc;
     }, { free: 0, premium: 0, enterprise: 0 }) || { free: 0, premium: 0, enterprise: 0 };
@@ -322,14 +322,14 @@ export async function fetchUsersAnalytics(filters: AnalyticsFilters = {}): Promi
     usersByPlan.free = (totalUsers || 0) - usersByPlan.premium - usersByPlan.enterprise;
 
     // User Growth
-    const { data: userGrowthData } = await supabase
+    const { data: userGrowthData } = await getSupabase()
       .from('profiles')
       .select('created_at')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
       .order('created_at');
 
-    const userGrowth = userGrowthData?.reduce((acc: any[], user) => {
+    const userGrowth = userGrowthData?.reduce((acc: any[], user: any) => {
       const date = new Date(user.created_at).toISOString().split('T')[0];
       const existing = acc.find(item => item.date === date);
       if (existing) {
@@ -368,14 +368,14 @@ export async function fetchSurveyAnalytics(filters: AnalyticsFilters = {}): Prom
     const endDate = filters.endDate ? new Date(filters.endDate) : now;
 
     // Total surveys
-    const { count: totalSurveys } = await supabase
+    const { count: totalSurveys } = await getSupabase()
       .from('questionnaire_responses')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
     // Completed surveys
-    const { count: completedSurveys } = await supabase
+    const { count: completedSurveys } = await getSupabase()
       .from('questionnaire_responses')
       .select('*', { count: 'exact', head: true })
       .eq('completed', true)
@@ -395,7 +395,7 @@ export async function fetchSurveyAnalytics(filters: AnalyticsFilters = {}): Prom
     };
 
     // Completion trend
-    const { data: completionData } = await supabase
+    const { data: completionData } = await getSupabase()
       .from('questionnaire_responses')
       .select('created_at')
       .eq('completed', true)
@@ -403,7 +403,7 @@ export async function fetchSurveyAnalytics(filters: AnalyticsFilters = {}): Prom
       .lte('created_at', endDate.toISOString())
       .order('created_at');
 
-    const completionTrend = completionData?.reduce((acc: any[], response) => {
+    const completionTrend = completionData?.reduce((acc: any[], response: any) => {
       const date = new Date(response.created_at).toISOString().split('T')[0];
       const existing = acc.find(item => item.date === date);
       if (existing) {
@@ -440,33 +440,33 @@ export async function fetchFunnelAnalytics(filters: AnalyticsFilters = {}): Prom
     const endDate = filters.endDate ? new Date(filters.endDate) : now;
 
     // Get funnel steps data
-    const { count: landingPageVisits } = await supabase
+    const { count: landingPageVisits } = await getSupabase()
       .from('activity_logs')
       .select('*', { count: 'exact', head: true })
       .eq('action', 'landing_page_visit')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
-    const { count: emailSignups } = await supabase
+    const { count: emailSignups } = await getSupabase()
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
-    const { count: profilesCreated } = await supabase
+    const { count: profilesCreated } = await getSupabase()
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .not('full_name', 'is', null)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
-    const { count: surveysStarted } = await supabase
+    const { count: surveysStarted } = await getSupabase()
       .from('questionnaire_responses')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
-    const { count: surveysCompleted } = await supabase
+    const { count: surveysCompleted } = await getSupabase()
       .from('questionnaire_responses')
       .select('*', { count: 'exact', head: true })
       .eq('completed', true)

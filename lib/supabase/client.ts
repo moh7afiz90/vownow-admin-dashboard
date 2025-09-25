@@ -25,5 +25,19 @@ export function createBrowserSupabase() {
   });
 }
 
-// Export the default browser client
-export const supabase = createBrowserSupabase();
+// Create a lazy-initialized Supabase client
+let supabaseInstance: ReturnType<typeof createBrowserSupabase> | null = null;
+
+export function getSupabase() {
+  if (!supabaseInstance) {
+    supabaseInstance = createBrowserSupabase();
+  }
+  return supabaseInstance;
+}
+
+// Export for backward compatibility - will be initialized on first use
+export const supabase = new Proxy({} as ReturnType<typeof createBrowserSupabase>, {
+  get(target, prop) {
+    return getSupabase()[prop as keyof ReturnType<typeof createBrowserSupabase>];
+  }
+});
