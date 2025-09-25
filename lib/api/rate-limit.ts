@@ -114,8 +114,6 @@ function defaultKeyGenerator(request: NextRequest): string {
     ip = forwardedFor.split(',')[0].trim();
   } else if (realIp) {
     ip = realIp;
-  } else if (request.ip) {
-    ip = request.ip;
   }
 
   return `rate_limit:${ip}`;

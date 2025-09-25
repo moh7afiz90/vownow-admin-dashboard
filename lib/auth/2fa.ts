@@ -84,7 +84,7 @@ export class TotpUtils {
   /**
    * Generate backup codes for 2FA recovery
    */
-  private static generateBackupCodes(count: number = 8): string[] {
+  static generateBackupCodes(count: number = 8): string[] {
     const codes: string[] = [];
 
     for (let i = 0; i < count; i++) {

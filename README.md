@@ -29,6 +29,15 @@ A standalone Next.js application for managing the VowNow platform.
 - pnpm
 - Supabase account with admin user configured
 
+### Default Admin Credentials
+
+```
+Email:    admin@vownow.com
+Password: Admin@123456
+```
+
+⚠️ **IMPORTANT**: Change these credentials in production! See [ADMIN_CREDENTIALS.md](./ADMIN_CREDENTIALS.md) for details.
+
 ### Installation
 
 1. Clone the repository

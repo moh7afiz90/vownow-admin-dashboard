@@ -45,8 +45,8 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   const [isDebouncing, setIsDebouncing] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>()
-  const searchTimeoutRef = useRef<NodeJS.Timeout>()
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Sync internal state with prop value
   useEffect(() => {

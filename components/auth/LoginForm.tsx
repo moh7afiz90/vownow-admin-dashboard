@@ -71,10 +71,8 @@ export function LoginForm({ onSuccess, onError, className }: LoginFormProps) {
           if (result.attemptsRemaining !== undefined) {
             setError(`${errorMessage}. ${result.attemptsRemaining} attempts remaining.`);
           }
-
-          if (response.status === 429) {
-            setError('Account temporarily locked. Please try again later.');
-          }
+        } else if (response.status === 429) {
+          setError('Account temporarily locked. Please try again later.');
         } else if (response.status === 400) {
           setError(result.error || 'Please check your input');
         } else {

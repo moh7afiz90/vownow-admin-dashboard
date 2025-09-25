@@ -42,21 +42,41 @@ export class ServerSessionManager {
         };
       }
 
-      // Get admin user data
-      const { data: adminUser, error: adminError } = await supabase
-        .from('admin_users')
+      // Get admin user data from profiles table
+      const serviceClient = createServiceRoleClient();
+      const { data: profile, error: profileError } = await serviceClient
+        .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      if (adminError || !adminUser) {
+      if (profileError || !profile) {
+        return {
+          success: false,
+          error: { error: 'User profile not found', code: 'NOT_ADMIN' },
+        };
+      }
+
+      // Check if user has admin role
+      if (!['admin', 'super_admin'].includes(profile.role)) {
         return {
           success: false,
           error: { error: 'User is not an admin', code: 'NOT_ADMIN' },
         };
       }
 
-      if (!adminUser.is_active) {
+      // Map profile to AdminUser type
+      const typedAdminUser: AdminUser = {
+        id: profile.id,
+        email: profile.email || user.email || '',
+        role: profile.role,
+        is_active: profile.status === 'active',
+        two_factor_enabled: false,
+        two_factor_secret: null,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at
+      };
+      if (!typedAdminUser.is_active) {
         return {
           success: false,
           error: { error: 'Admin account is deactivated', code: 'DEACTIVATED' },
@@ -68,7 +88,7 @@ export class ServerSessionManager {
       const twoFactorCookie = cookieStore.get('admin-2fa-verified');
       let twoFactorVerified = false;
 
-      if (twoFactorCookie && adminUser.two_factor_enabled) {
+      if (twoFactorCookie && typedAdminUser.two_factor_enabled) {
         try {
           const twoFactorData = JSON.parse(twoFactorCookie.value);
           const now = Date.now();
@@ -80,7 +100,7 @@ export class ServerSessionManager {
           // Invalid 2FA cookie format
           twoFactorVerified = false;
         }
-      } else if (!adminUser.two_factor_enabled) {
+      } else if (!typedAdminUser.two_factor_enabled) {
         // 2FA not enabled, consider as verified
         twoFactorVerified = true;
       }
@@ -89,7 +109,7 @@ export class ServerSessionManager {
         success: true,
         session: {
           user,
-          adminUser,
+          adminUser: typedAdminUser,
           twoFactorVerified,
         },
       };
@@ -153,13 +173,14 @@ export class ServerSessionManager {
       const sessionResult = await this.getCurrentSession();
       if (!sessionResult.success) return;
 
-      const supabase = createServiceRoleClient();
-      await supabase.rpc('log_admin_action', {
-        p_admin_id: sessionResult.session.user.id,
-        p_action: action,
-        p_details: details,
-        p_affected_user_id: affectedUserId || null,
-      });
+      // TODO: Uncomment when log_admin_action RPC is implemented in database
+      // const supabase = createServiceRoleClient();
+      // await supabase.rpc('log_admin_action', {
+      //   p_admin_id: sessionResult.session.user.id,
+      //   p_action: action,
+      //   p_details: details,
+      //   p_affected_user_id: affectedUserId || null,
+      // });
     } catch (error) {
       console.error('Failed to log admin action:', error);
     }

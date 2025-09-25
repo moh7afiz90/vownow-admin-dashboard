@@ -297,7 +297,7 @@ export async function checkSystemResourcesHealth(): Promise<SystemResourcesHealt
             Math.random() * 2 + 0.5,
             Math.random() * 2 + 0.8,
             Math.random() * 2 + 1.0,
-          ],
+          ] as [number, number, number],
         },
         memory: {
           used: Math.floor((8192 * memoryUsage) / 100),
@@ -323,7 +323,7 @@ export async function checkSystemResourcesHealth(): Promise<SystemResourcesHealt
       lastChecked: new Date().toISOString(),
       error: error instanceof Error ? error.message : 'System resource check failed',
       details: {
-        cpu: { usage: 0, load: [0, 0, 0] },
+        cpu: { usage: 0, load: [0, 0, 0] as [number, number, number] },
         memory: { used: 0, total: 8192, percentage: 0 },
         disk: { used: 0, total: 100, percentage: 0 },
         network: { bytesIn: 0, bytesOut: 0, connectionsActive: 0 },

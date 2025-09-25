@@ -21,10 +21,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(
+    // Create response with proper headers
+    const response = NextResponse.json(
       { success: true, user: result.user },
       { status: 200 }
     );
+
+    // The cookies are already set by signInAdmin through Supabase auth,
+    // but we need to ensure the response includes them
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

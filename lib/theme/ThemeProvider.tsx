@@ -12,7 +12,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-interface ThemeProviderProps {
+export interface ThemeProviderProps {
   children: React.ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
@@ -134,11 +134,25 @@ export function useThemeContext(): ThemeContextType {
 export function withTheme<P extends object>(
   Component: React.ComponentType<P>
 ): React.ComponentType<P & Partial<ThemeProviderProps>> {
-  return function ThemeWrappedComponent({ children, ...props }) {
-    const { children: _, ...themeProps } = props as ThemeProviderProps;
+  return function ThemeWrappedComponent(props: P & Partial<ThemeProviderProps>) {
+    const {
+      defaultTheme,
+      storageKey,
+      enableSystem,
+      disableTransitionOnChange,
+      ...componentProps
+    } = props;
+
+    const themeProps = {
+      defaultTheme,
+      storageKey,
+      enableSystem,
+      disableTransitionOnChange,
+    };
+
     return (
       <ThemeProvider {...themeProps}>
-        <Component {...(props as P)} />
+        <Component {...(componentProps as P)} />
       </ThemeProvider>
     );
   };

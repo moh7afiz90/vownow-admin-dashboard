@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           lastChecked: new Date().toISOString(),
           error: 'Health check failed',
           details: {
-            cpu: { usage: 0, load: [0, 0, 0] },
+            cpu: { usage: 0, load: [0, 0, 0] as [number, number, number] },
             memory: { used: 0, total: 8192, percentage: 0 },
             disk: { used: 0, total: 100, percentage: 0 },
             network: { bytesIn: 0, bytesOut: 0, connectionsActive: 0 },

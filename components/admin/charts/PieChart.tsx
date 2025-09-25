@@ -185,7 +185,7 @@ export const PieChart: React.FC<PieChartProps> = ({
             ))}
           </Pie>
           <Tooltip
-            formatter={tooltipFormatter || ((value, name) => [value, name])}
+            formatter={tooltipFormatter || ((value: any, name: any) => [value, String(name)])}
             data-testid="tooltip"
           />
           {showLegend && (
@@ -193,7 +193,7 @@ export const PieChart: React.FC<PieChartProps> = ({
               data-testid="legend"
               formatter={(value, entry) => (
                 <span style={{ color: entry.color }}>
-                  {value} {showPercentages && entry.payload ? `(${entry.payload.percentage}%)` : ''}
+                  {value} {showPercentages && entry.payload ? `(${(entry.payload as any).percentage}%)` : ''}
                 </span>
               )}
             />

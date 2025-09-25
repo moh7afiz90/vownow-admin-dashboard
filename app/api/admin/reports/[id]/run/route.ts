@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { runReport } from '@/lib/admin/reports';
 
-interface RouteContext {
-  params: {
-    id: string;
-  };
-}
-
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const cookieStore = await cookies();
     const adminToken = cookieStore.get('admin_token');
@@ -17,7 +11,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const reportId = context.params.id;
+    const { id: reportId } = await params;
 
     // Validate report ID
     if (!reportId) {

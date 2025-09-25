@@ -16,6 +16,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
+      // Use the API route for proper server-side authentication
       const response = await fetch('/api/admin/auth/login', {
         method: 'POST',
         headers: {
@@ -30,11 +31,11 @@ export default function AdminLoginPage() {
         throw new Error(data.error || 'Login failed');
       }
 
+      // Success - redirect to admin dashboard
       router.push('/admin');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
       setLoading(false);
     }
   };

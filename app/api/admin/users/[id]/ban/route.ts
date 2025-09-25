@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -14,7 +14,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { userId } = await params;
+    const { id } = await params;
+    const userId = id;
 
     const { error } = await supabase
       .from('profiles')
@@ -46,7 +47,7 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -56,7 +57,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { userId } = await params;
+    const { id } = await params;
+    const userId = id;
 
     const { error } = await supabase
       .from('profiles')

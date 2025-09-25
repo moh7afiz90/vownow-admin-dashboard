@@ -378,8 +378,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               mode="range"
               data-min-date={minDate?.toISOString()}
               data-max-date={maxDate?.toISOString()}
-              role="dialog"
-              aria-label="Select date range"
             />
           </div>
         </div>

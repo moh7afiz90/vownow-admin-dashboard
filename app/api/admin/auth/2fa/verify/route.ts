@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       .from('admin_users')
       .select('id, email, role, is_active, two_factor_secret, two_factor_enabled')
       .eq('id', userId)
-      .single();
+      .single() as { data: any; error: any };
 
     if (userError || !adminUser) {
       return NextResponse.json(

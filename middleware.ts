@@ -4,6 +4,7 @@ import { createMiddlewareClient } from '@/lib/supabase/middleware';
 
 // Admin routes that require authentication
 const ADMIN_PROTECTED_ROUTES = [
+  '/admin',
   '/admin/dashboard',
   '/admin/users',
   '/admin/analytics',
@@ -35,7 +36,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check if route requires authentication
-  const isProtectedRoute = ADMIN_PROTECTED_ROUTES.some(route =>
+  const isProtectedRoute = pathname === '/admin' || ADMIN_PROTECTED_ROUTES.some(route =>
     pathname.startsWith(route)
   );
 
@@ -60,26 +61,41 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Check if user has admin role
-    const { data: adminUser, error: adminError } = await supabase
-      .from('admin_users')
-      .select('role, is_active, two_factor_enabled')
+    // Check if user has admin role in profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, status')
       .eq('id', user.id)
       .single();
 
-    if (adminError || !adminUser) {
+    if (profileError || !profile) {
+      // User exists but profile not found
+      const redirectUrl = new URL('/admin/login', request.url);
+      redirectUrl.searchParams.set('error', 'unauthorized');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Check if user has admin role
+    if (!['admin', 'super_admin'].includes(profile.role)) {
       // User exists but is not an admin
       const redirectUrl = new URL('/admin/login', request.url);
       redirectUrl.searchParams.set('error', 'unauthorized');
       return NextResponse.redirect(redirectUrl);
     }
 
-    if (!adminUser.is_active) {
-      // Admin account is deactivated
+    if (profile.status !== 'active') {
+      // Admin account is not active
       const redirectUrl = new URL('/admin/login', request.url);
       redirectUrl.searchParams.set('error', 'deactivated');
       return NextResponse.redirect(redirectUrl);
     }
+
+    // For backward compatibility with 2FA checks
+    const adminUser = {
+      role: profile.role,
+      is_active: profile.status === 'active',
+      two_factor_enabled: false // Set to false since profiles table doesn't have this field
+    };
 
     // Check 2FA requirement for sensitive routes
     const requiresTwoFactor = [
@@ -140,10 +156,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all admin routes except:
-     * - /admin/login (and subpaths)
-     * - Static files and API routes
+     * Match all admin routes
      */
-    '/admin/((?!login|_next/static|_next/image|favicon.ico|.*\\.).*)',
+    '/admin/:path*',
   ],
 };

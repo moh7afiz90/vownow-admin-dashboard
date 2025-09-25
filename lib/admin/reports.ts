@@ -305,12 +305,23 @@ export async function validateReportConfig(
 
 export async function runReport(reportId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Mock implementation - in real app would execute the report
+    // First get the current download count
+    const { data: currentReport, error: fetchError } = await supabase
+      .from('reports')
+      .select('download_count')
+      .eq('id', reportId)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    // Then update with incremented count
     const { error } = await supabase
       .from('reports')
       .update({
         last_run_at: new Date().toISOString(),
-        download_count: supabase.raw('download_count + 1'),
+        download_count: (currentReport?.download_count || 0) + 1,
       })
       .eq('id', reportId);
 
@@ -344,10 +355,16 @@ export async function exportReport(
     // Mock export URL
     const mockUrl = `https://storage.example.com/exports/${reportId}.${format}`;
 
-    // Update download count
+    // Get current download count and update
+    const { data: currentReport } = await supabase
+      .from('reports')
+      .select('download_count')
+      .eq('id', reportId)
+      .single();
+
     await supabase
       .from('reports')
-      .update({ download_count: supabase.raw('download_count + 1') })
+      .update({ download_count: (currentReport?.download_count || 0) + 1 })
       .eq('id', reportId);
 
     return { success: true, url: mockUrl };

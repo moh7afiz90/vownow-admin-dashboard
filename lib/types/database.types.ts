@@ -55,6 +55,8 @@ export interface AdminUser extends DatabaseBaseTable {
   role: AdminUserRole;
   permissions: Record<string, any>;
   is_active: boolean;
+  two_factor_enabled?: boolean;
+  two_factor_secret?: string;
   last_login_at: string | null;
   created_by: string | null;
   updated_by: string | null;

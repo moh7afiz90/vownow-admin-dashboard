@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -14,7 +14,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { userId } = await params;
+    const { id } = await params;
+    const userId = id;
     const { role } = await request.json();
 
     if (!['user', 'admin'].includes(role)) {

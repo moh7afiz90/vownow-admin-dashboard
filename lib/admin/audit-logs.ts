@@ -272,15 +272,15 @@ export async function validateAuditLogFilters(filters: AuditLogFilters = {}): Pr
 
 async function calculateSummaryStats(filters: AuditLogFilters = {}): Promise<AuditLogsResponse['summary']> {
   try {
-    let baseQuery = supabase.from('audit_logs');
+    let baseQuery = supabase.from('audit_logs').select('*', { count: 'exact', head: true });
 
     // Apply the same filters as the main query (except pagination)
     if (filters.user) {
-      baseQuery = baseQuery.eq('users.email', filters.user);
+      baseQuery = baseQuery.eq('user_email', filters.user);
     }
 
     if (filters.admin) {
-      baseQuery = baseQuery.eq('admin.email', filters.admin);
+      baseQuery = baseQuery.eq('admin_email', filters.admin);
     }
 
     if (filters.action) {
@@ -308,36 +308,54 @@ async function calculateSummaryStats(filters: AuditLogFilters = {}): Promise<Aud
     }
 
     // Get total count
-    const { count: totalActions } = await baseQuery
-      .select('*', { count: 'exact', head: true });
+    const { count: totalActions } = await baseQuery;
 
-    // Get successful actions count
-    const { count: successfulActions } = await baseQuery
-      .select('*', { count: 'exact', head: true })
-      .eq('outcome', 'success');
+    // Get successful actions count - create new query
+    let successQuery = supabase.from('audit_logs').select('*', { count: 'exact', head: true });
+    if (filters.user) successQuery = successQuery.eq('user_email', filters.user);
+    if (filters.admin) successQuery = successQuery.eq('admin_email', filters.admin);
+    if (filters.action) successQuery = successQuery.eq('action', filters.action);
+    if (filters.resource) successQuery = successQuery.eq('resource', filters.resource);
+    const { count: successfulActions } = await successQuery.eq('outcome', 'success');
 
-    // Get failed actions count
-    const { count: failedActions } = await baseQuery
-      .select('*', { count: 'exact', head: true })
-      .in('outcome', ['failure', 'error']);
+    // Get failed actions count - create new query
+    let failQuery = supabase.from('audit_logs').select('*', { count: 'exact', head: true });
+    if (filters.user) failQuery = failQuery.eq('user_email', filters.user);
+    if (filters.admin) failQuery = failQuery.eq('admin_email', filters.admin);
+    if (filters.action) failQuery = failQuery.eq('action', filters.action);
+    if (filters.resource) failQuery = failQuery.eq('resource', filters.resource);
+    const { count: failedActions } = await failQuery.in('outcome', ['failure', 'error']);
 
-    // Get critical events count
-    const { count: criticalEvents } = await baseQuery
-      .select('*', { count: 'exact', head: true })
-      .eq('severity', 'critical');
+    // Get critical events count - create new query
+    let criticalQuery = supabase.from('audit_logs').select('*', { count: 'exact', head: true });
+    if (filters.user) criticalQuery = criticalQuery.eq('user_email', filters.user);
+    if (filters.admin) criticalQuery = criticalQuery.eq('admin_email', filters.admin);
+    if (filters.action) criticalQuery = criticalQuery.eq('action', filters.action);
+    if (filters.resource) criticalQuery = criticalQuery.eq('resource', filters.resource);
+    const { count: criticalEvents } = await criticalQuery.eq('severity', 'critical');
 
-    // Get unique users count
-    const { data: uniqueUsersData } = await baseQuery
-      .select('user_id', { count: 'exact' })
-      .not('user_id', 'is', null);
+    // Get unique users count - create new query
+    let usersQuery = supabase.from('audit_logs').select('user_id');
+    if (filters.user) usersQuery = usersQuery.eq('user_email', filters.user);
+    if (filters.admin) usersQuery = usersQuery.eq('admin_email', filters.admin);
+    if (filters.action) usersQuery = usersQuery.eq('action', filters.action);
+    if (filters.resource) usersQuery = usersQuery.eq('resource', filters.resource);
+    const { data: uniqueUsersData } = await usersQuery.not('user_id', 'is', null);
 
     const uniqueUserIds = new Set(uniqueUsersData?.map(row => row.user_id) || []);
     const uniqueUsers = uniqueUserIds.size;
 
-    // Get most common actions
-    const { data: actionData } = await baseQuery
-      .select('action')
-      .not('action', 'is', null);
+    // Get most common actions - create new query
+    let actionsQuery = supabase.from('audit_logs').select('action');
+    if (filters.user) actionsQuery = actionsQuery.eq('user_email', filters.user);
+    if (filters.admin) actionsQuery = actionsQuery.eq('admin_email', filters.admin);
+    if (filters.action) actionsQuery = actionsQuery.eq('action', filters.action);
+    if (filters.resource) actionsQuery = actionsQuery.eq('resource', filters.resource);
+    if (filters.outcome) actionsQuery = actionsQuery.eq('outcome', filters.outcome);
+    if (filters.severity) actionsQuery = actionsQuery.eq('severity', filters.severity);
+    if (filters.dateFrom) actionsQuery = actionsQuery.gte('timestamp', filters.dateFrom);
+    if (filters.dateTo) actionsQuery = actionsQuery.lte('timestamp', filters.dateTo);
+    const { data: actionData } = await actionsQuery.not('action', 'is', null);
 
     const actionCounts = actionData?.reduce((acc: Record<string, number>, row) => {
       acc[row.action] = (acc[row.action] || 0) + 1;

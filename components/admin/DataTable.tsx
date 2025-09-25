@@ -172,15 +172,6 @@ export const DataTable: React.FC<DataTableProps> = ({
     })
   }, [onSelectionChange])
 
-  const toggleSelectAll = useCallback(() => {
-    const allRowIds = filteredData.map(row => row[keyField])
-    const allSelected = allRowIds.every(id => selectedRows.includes(id))
-
-    const newSelection = allSelected ? [] : allRowIds
-    setSelectedRows(newSelection)
-    onSelectionChange?.(newSelection)
-  }, [filteredData, selectedRows, keyField, onSelectionChange])
-
   // Process data with filtering and sorting
   const filteredData = useMemo(() => {
     if (!data?.length) return []
@@ -223,6 +214,15 @@ export const DataTable: React.FC<DataTableProps> = ({
 
     return result
   }, [data, filters, sortConfigs])
+
+  const toggleSelectAll = useCallback(() => {
+    const allRowIds = filteredData.map(row => row[keyField])
+    const allSelected = allRowIds.every(id => selectedRows.includes(id))
+
+    const newSelection = allSelected ? [] : allRowIds
+    setSelectedRows(newSelection)
+    onSelectionChange?.(newSelection)
+  }, [filteredData, selectedRows, keyField, onSelectionChange])
 
   // Announce filter results
   useEffect(() => {
@@ -404,7 +404,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               )}
               {columns.map((column) => {
                 const sortConfig = sortConfigs.find(config => config.key === column.key)
-                const sortDirection = sortConfig?.direction || 'none'
+                const sortDirection = sortConfig?.direction === 'asc' ? 'ascending' : sortConfig?.direction === 'desc' ? 'descending' : 'none'
 
                 return (
                   <th
@@ -427,10 +427,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                       <span>{column.label}</span>
                       {column.sortable && (
                         <span className="flex-shrink-0">
-                          {sortDirection === 'asc' && (
+                          {sortDirection === 'ascending' && (
                             <ChevronUp data-testid="sort-asc-icon" className="w-4 h-4" />
                           )}
-                          {sortDirection === 'desc' && (
+                          {sortDirection === 'descending' && (
                             <ChevronDown data-testid="sort-desc-icon" className="w-4 h-4" />
                           )}
                           {sortDirection === 'none' && (

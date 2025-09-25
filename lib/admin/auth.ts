@@ -22,9 +22,13 @@ export async function getAdminSession() {
 
   const { user, adminUser } = sessionResult.session;
 
-  // Return in legacy format for backward compatibility
+  // Return session data
   return {
-    user,
+    user: {
+      id: user.id,
+      email: user.email!,
+      role: adminUser.role,
+    },
     profile: {
       role: adminUser.role,
       id: adminUser.id,
@@ -47,12 +51,8 @@ export async function signInAdmin(email: string, password: string) {
   console.log('Attempting admin login for:', email);
 
   try {
-    // Use anon key for authentication, not service role
-    const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    // Use the server-side Supabase client for proper cookie handling
+    const supabase = await createServerClient();
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -79,13 +79,25 @@ export async function signInAdmin(email: string, password: string) {
 
     console.log('User authenticated, checking admin role for ID:', data.user.id);
 
-    // Use service role client to check admin role
+    // Use service role client to check admin role in profiles table
     const adminSupabase = createServiceRoleClient();
-    const { data: adminUser, error: adminUserError } = await adminSupabase
-      .from('admin_users')
-      .select('id, email, role, is_active, two_factor_enabled, two_factor_secret')
+    const { data: profile, error: profileError } = await adminSupabase
+      .from('profiles')
+      .select('id, email, role, status')
       .eq('id', data.user.id)
       .single();
+
+    // Map profile data to AdminUser structure
+    const adminUser = profile ? {
+      id: profile.id,
+      email: profile.email || data.user.email,
+      role: profile.role,
+      is_active: profile.status === 'active',
+      two_factor_enabled: false,
+      two_factor_secret: null
+    } : null;
+
+    const adminUserError = profileError;
 
     if (adminUserError || !adminUser) {
       console.error('Admin user fetch error:', adminUserError);
@@ -94,6 +106,13 @@ export async function signInAdmin(email: string, password: string) {
     }
 
     console.log('User admin role:', adminUser.role);
+
+    // Check if user has admin role
+    if (!['admin', 'super_admin'].includes(adminUser.role)) {
+      console.error('User does not have admin role:', adminUser.role);
+      await supabase.auth.signOut();
+      return { error: 'Unauthorized: Admin access only' };
+    }
 
     if (!adminUser.is_active) {
       await supabase.auth.signOut();
@@ -121,23 +140,7 @@ export async function signInAdmin(email: string, password: string) {
       };
     }
 
-    // No 2FA required, set session cookie
-    const cookieStore = await cookies();
-    const sessionToken = Buffer.from(JSON.stringify({
-      userId: data.user.id,
-      email: data.user.email,
-      role: adminUser.role,
-      timestamp: Date.now(),
-    })).toString('base64');
-
-    cookieStore.set('admin-session', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-      path: '/admin',
-    });
-
+    // No 2FA required - Supabase auth helpers will handle session cookies
     // Log successful login
     await ServerSessionManager.logAction('admin_login_success', {
       userId: data.user.id,
@@ -172,11 +175,6 @@ export async function signOutAdmin() {
 
     // Clear all session data using ServerSessionManager
     await ServerSessionManager.clearSession();
-
-    // Also clear legacy cookies for backward compatibility
-    const cookieStore = await cookies();
-    cookieStore.delete('admin-token');
-    cookieStore.delete('admin-session');
 
     console.log('Admin signed out successfully');
   } catch (error) {

@@ -5,8 +5,7 @@ import type { Database } from '@/lib/types/database.types';
 
 // Server client for server components and API routes
 export async function createServerClient() {
-  const cookieStore = await cookies();
-  return createServerComponentClient<Database>({ cookies: () => cookieStore });
+  return createServerComponentClient<Database>({ cookies });
 }
 
 // Service role client for admin operations

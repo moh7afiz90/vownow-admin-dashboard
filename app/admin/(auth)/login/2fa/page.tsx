@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TwoFactorVerification } from '@/components/auth/TwoFactorVerification';
 import { TotpUtils } from '@/lib/auth/2fa';
 // QR Code library would be imported here
 // import { QRCodeSVG } from 'qrcode.react';
 
-export default function TwoFactorSetupPage() {
+function TwoFactorSetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<'verify' | 'setup'>('verify');
@@ -275,5 +275,17 @@ export default function TwoFactorSetupPage() {
         <p className="text-white">Loading two-factor authentication...</p>
       </div>
     </div>
+  );
+}
+
+export default function TwoFactorSetupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+        <div className="text-white">Loading...</div>
+      </div>
+    }>
+      <TwoFactorSetupContent />
+    </Suspense>
   );
 }

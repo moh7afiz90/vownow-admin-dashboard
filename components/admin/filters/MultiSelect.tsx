@@ -314,7 +314,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
               <button
                 type="button"
                 onClick={handleSelectAll}
-                disabled={maxSelected && value.length >= maxSelected}
+                disabled={!!maxSelected && value.length >= maxSelected}
                 className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Select All
