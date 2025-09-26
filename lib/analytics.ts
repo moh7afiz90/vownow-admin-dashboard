@@ -1,4 +1,13 @@
 import { getSupabase } from './supabase/client';
+import {
+  calculateAverageSessionDuration,
+  calculateRetentionRate,
+  calculateSurveysByCategory,
+  calculateAverageCompletionTime,
+  getSurveyResponseDistribution,
+  getConversionTrend,
+  calculateSegmentAnalysis,
+} from './metrics/calculations';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -340,9 +349,15 @@ export async function fetchUsersAnalytics(filters: AnalyticsFilters = {}): Promi
       return acc;
     }, []) || [];
 
-    // Mock values for session duration and retention rate
-    const averageSessionDuration = 1800; // 30 minutes
-    const retentionRate = 85.5;
+    // Calculate real session duration and retention rate
+    const averageSessionDuration = await calculateAverageSessionDuration(startDate, endDate);
+
+    // Calculate 7-day retention for users who joined 7 days ago
+    const cohortDate = new Date();
+    cohortDate.setDate(cohortDate.getDate() - 14); // Users who joined 2 weeks ago
+    const measurementDate = new Date();
+    measurementDate.setDate(measurementDate.getDate() - 7); // Check if active last week
+    const retentionRate = await calculateRetentionRate(cohortDate, measurementDate);
 
     return {
       totalUsers: totalUsers || 0,
@@ -386,13 +401,8 @@ export async function fetchSurveyAnalytics(filters: AnalyticsFilters = {}): Prom
     const completionRate = totalSurveys ? ((completedSurveys || 0) / totalSurveys) * 100 : 0;
     const abandonmentRate = 100 - completionRate;
 
-    // Mock data for categories and response distribution
-    const surveysByCategory = {
-      personal: Math.floor((totalSurveys || 0) * 0.3),
-      professional: Math.floor((totalSurveys || 0) * 0.35),
-      lifestyle: Math.floor((totalSurveys || 0) * 0.25),
-      health: Math.floor((totalSurveys || 0) * 0.1),
-    };
+    // Get real survey distribution by category
+    const surveysByCategory = await calculateSurveysByCategory(startDate, endDate);
 
     // Completion trend
     const { data: completionData } = await getSupabase()
@@ -419,9 +429,9 @@ export async function fetchSurveyAnalytics(filters: AnalyticsFilters = {}): Prom
       completedSurveys: completedSurveys || 0,
       incompleteSurveys,
       completionRate,
-      averageCompletionTime: 420, // 7 minutes
+      averageCompletionTime: await calculateAverageCompletionTime('questionnaire', startDate, endDate),
       surveysByCategory,
-      responseDistribution: [], // Mock data
+      responseDistribution: await getSurveyResponseDistribution(10),
       completionTrend,
       abandonmentRate,
     };
@@ -522,21 +532,10 @@ export async function fetchFunnelAnalytics(filters: AnalyticsFilters = {}): Prom
       totalCompletions,
       overallConversionRate,
       steps,
-      averageTimeToComplete: 1800, // 30 minutes
+      averageTimeToComplete: await calculateAverageCompletionTime('onboarding', startDate, endDate),
       dropoffPoints,
-      conversionTrend: [], // Mock data
-      segmentAnalysis: {
-        newUsers: {
-          entries: Math.floor(totalEntries * 0.7),
-          completions: Math.floor(totalCompletions * 0.6),
-          conversionRate: 21.4,
-        },
-        returningUsers: {
-          entries: Math.floor(totalEntries * 0.3),
-          completions: Math.floor(totalCompletions * 0.4),
-          conversionRate: 33.3,
-        },
-      },
+      conversionTrend: await getConversionTrend(30),
+      segmentAnalysis: await calculateSegmentAnalysis(startDate, endDate),
     };
   } catch (error) {
     console.error('Error fetching funnel analytics:', error);
